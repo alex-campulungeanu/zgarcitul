@@ -1,0 +1,58 @@
+version: '3.8'
+
+x-dev:
+    &proxy_conf
+    http_proxy: "${HTTP_PROXY}"
+    https_proxy: "${HTTPS_PROXY}"
+
+services:
+    ui:
+        container_name: ${APP_NAME-zgarcitul}_ui
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+            args: *proxy_conf
+        environment:
+            CHOKIDAR_USEPOLLING: "true"
+            << : *proxy_conf
+        image: ${APP_NAME-zgarcitul}_frontend_img
+        volumes:
+        - ./frontend:/app
+        - /app/node_modules
+        ports:
+        - 3050:3000
+        restart: always
+        command: tail -f /dev/null
+    rest:
+        container_name: ${APP_NAME-zgarcitul}_rest
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args: *proxy_conf
+        image: ${APP_NAME-zgarcitul}_backend_img
+        volumes:
+        - '.:/app'
+        ports:
+        - 5050:5000 
+        restart: always
+        environment: # TODO: create docker-compose.ovveride.yml with these 2 flask development environment
+        - FLASK_ENV=development
+        - FLASK_DEBUG=1
+        - http_proxy=${HTTP_PROXY}
+        - https_proxy=${HTTPS_PROXY}
+    db:
+        container_name: ${APP_NAME-zgarcitul}_db
+        image: postgres
+        environment:
+            << : *proxy_conf
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: postgres
+        volumes:
+        - database-data:/var/lib/postgresql/data
+        ports:
+        - 54325:5432
+        restart: always
+volumes:
+    database-data:
+        name: ${APP_NAME-zgarcitul}_db_volume
